@@ -86,7 +86,7 @@ def build_resource_name(today):
         which = "Special"
         notify_admins("Special election detected")
 
-    return "{} Election Results".format(which)
+    return "{} {} Election Results".format(year, which)
 
 def compute_hash(target_file):
     import hashlib
