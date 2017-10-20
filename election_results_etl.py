@@ -19,7 +19,12 @@ class ElectionResultsSchema(pl.BaseSchema):
     party_name = fields.String(allow_none=True)
     total_votes = fields.Integer(allow_none=False)
     percent_of_votes = fields.Float(allow_none=True)
-    registered_voters = fields.String(allow_none=True)
+    registered_voters = fields.Integer(allow_none=True)
+    ballots_cast = fields.Integer(allow_none=True)
+    num_precinct_total = fields.Integer(dump_to="num_precinct_total", allow_none=True)
+    num_precinct_rptg = fields.Integer(dump_to="num_precinct_rptg",allow_none=True)
+    over_votes = fields.Integer(allow_none=True)
+    under_votes = fields.Integer(allow_none=True)
     # Never let any of the key fields have None values. It's just asking for 
     # multiplicity problems on upsert.
 
@@ -149,7 +154,7 @@ def main(schema):
 
     changed, last_hash_entry = is_changed(table,zip_file,r_name)
     if not changed:
-        print("The hash value for the Election Results summary file is unchanged.")
+        print("The Election Results summary file seems to be unchanged.")
         return
     else:
         print("A change in the Election Results summary file was detected.")
