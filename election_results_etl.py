@@ -85,7 +85,7 @@ def build_resource_name(today):
     year = today.year
     if datetime(year,2,14) < today < datetime(year,4,15):
         which = "Primary"
-    elif datetime(year,10,14) < today < datetime(year,12,19):
+    elif datetime(year,10,19) < today < datetime(year,12,19):
         which = "General"
     else:
         which = "Special"
@@ -112,29 +112,28 @@ def save_new_hash(table,new_value,r_name):
     table.insert(dict(hash_name='Election Results CSV zipped', value=new_value, date=datetime.now().strftime("%Y-%m-%d"),inferred_results = r_name))
     return table
 
-def is_changed(table,zip_file,r_name):
+def is_changed(table,zip_file):
     # First just try checking the modification date of the 
     # file.
     hash_value = compute_hash(zip_file)
     last_hash_entry = retrieve_last_hash(table)
     print(last_hash_entry)
     zf = PyZipFile(zip_file)
-    last_mod = datetime(*zf.getinfo("summary.csv").date_time)
-    if last_hash_entry is None:
-        return True, None
-    if last_mod <= datetime.strptime(last_hash_entry['date'], "%Y-%m-%d"): # This compares two different values.
-        return False, last_hash_entry
-    #try:
-    #    last_mod = datetime(*zf.getinfo("summary.csv").date_time)
-    #    if last_hash_entry is None:
-    #        table = save_new_hash(table,hash_value,r_name)
-    #        return True, None
-    #    if last_mod <= last_hash_entry['date']: # This compares two different values.
-    #        return False, last_hash_entry
-    #except:
-    #    # Check database of hashes.
-    #    if hash_value == last_hash_entry.value:
-    #        return False, last_hash_entry
+    #last_mod = datetime(*zf.getinfo("summary.csv").date_time)
+    #if last_hash_entry is None:
+    #    return True, None
+    #if last_mod <= datetime.strptime(last_hash_entry['date'], "%Y-%m-%d"): # This compares two different values.
+    #    return False, last_hash_entry
+    try:
+        last_mod = datetime(*zf.getinfo("summary.csv").date_time)
+        if last_hash_entry is None:
+            return True, None
+        if last_mod <= last_hash_entry['date']: # This compares two different values.
+            return False, last_hash_entry
+    except:
+        # Check database of hashes.
+        if hash_value == last_hash_entry.value:
+            return False, last_hash_entry
     return True, last_hash_entry
 
 def update_hash(table,zip_file,r_name):
@@ -146,18 +145,18 @@ def main(schema):
     zip_file = 'summary.zip'
     print("zip_file = {}".format(zip_file))
     today = datetime.now()
-    r_name = build_resource_name(today)
-    print("Inferred name = {}".format(r_name))
 
     db = dataset.connect('sqlite:///hashes.db')
     table = db['election']
 
-    changed, last_hash_entry = is_changed(table,zip_file,r_name)
+    changed, last_hash_entry = is_changed(table,zip_file)
     if not changed:
         print("The Election Results summary file seems to be unchanged.")
         return
     else:
         print("A change in the Election Results summary file was detected.")
+        r_name = build_resource_name(today)
+        print("Inferred name = {}".format(r_name))
 
     # Unzip the file
     path = "tmp"
