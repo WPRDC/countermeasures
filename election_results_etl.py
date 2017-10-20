@@ -50,10 +50,22 @@ class ElectionResultsSchema(pl.BaseSchema):
 #The package ID is obtained not from this file but from
 #the referenced settings.json file when the corresponding
 #flag below is True.
-def notify_admins():
+def notify_admins(msg):
+    print(msg)
     pass
 
-def build_resource_name(today):
+def classify_election(dt):
+    year = dt.year
+    if datetime(year,2,14) < dt < datetime(year,4,15):
+        which = "Primary"
+    elif datetime(year,10,19) < dt < datetime(year,12,19):
+        which = "General"
+    else:
+        which = "Special"
+        notify_admins("Special election detected")
+    return which
+
+def build_resource_name(today,last_modified):
     # Some election dates: May 17, 2017 (Primary)
     # November 8, 2016 (General)
 
@@ -81,15 +93,14 @@ def build_resource_name(today):
     # The county updates the data every 10-15 minutes on election night, 
     # then less frequently until final certification a month or so 
     # following the election.
-      
-    year = today.year
-    if datetime(year,2,14) < today < datetime(year,4,15):
-        which = "Primary"
-    elif datetime(year,10,19) < today < datetime(year,12,19):
-        which = "General"
+    if last_modified is not None:
+        date_to_use = last_modified
     else:
-        which = "Special"
-        notify_admins("Special election detected")
+        print("build_resource_name: Falling back from last_modified to today's date.")
+        raise ValueError("build_resource_name: Falling back from last_modified to today's date, but maybe this is not such a hot idea...")
+        date_to_use = today
+    year = date_to_use.year
+    which = classify_election(date_to_use)
 
     return "{} {} Election Results".format(year, which)
 
@@ -124,17 +135,18 @@ def is_changed(table,zip_file):
     #    return True, None
     #if last_mod <= datetime.strptime(last_hash_entry['date'], "%Y-%m-%d"): # This compares two different values.
     #    return False, last_hash_entry
+    last_mod = None
     try:
         last_mod = datetime(*zf.getinfo("summary.csv").date_time)
         if last_hash_entry is None:
-            return True, None
+            return True, None, last_mod
         if last_mod <= last_hash_entry['date']: # This compares two different values.
-            return False, last_hash_entry
+            return False, last_hash_entry, last_mod
     except:
         # Check database of hashes.
         if hash_value == last_hash_entry.value:
-            return False, last_hash_entry
-    return True, last_hash_entry
+            return False, last_hash_entry, last_mod
+    return True, last_hash_entry, last_mod
 
 def update_hash(table,zip_file,r_name):
     hash_value = compute_hash(zip_file)
@@ -149,13 +161,13 @@ def main(schema):
     db = dataset.connect('sqlite:///hashes.db')
     table = db['election']
 
-    changed, last_hash_entry = is_changed(table,zip_file)
+    changed, last_hash_entry, last_modified = is_changed(table,zip_file)
     if not changed:
         print("The Election Results summary file seems to be unchanged.")
         return
     else:
         print("A change in the Election Results summary file was detected.")
-        r_name = build_resource_name(today)
+        r_name = build_resource_name(today,last_modified)
         print("Inferred name = {}".format(r_name))
 
     # Unzip the file
