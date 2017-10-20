@@ -1,4 +1,4 @@
-import sys, json, datetime
+import os, sys, json
 from marshmallow import fields, pre_load, post_load
 
 sys.path.insert(0, '/Users/drw/WPRDC/etl-dev/wprdc-etl') # A path that we need to import code from
@@ -172,7 +172,9 @@ def main(schema):
 
     # Unzip the file
     path = "tmp"
-    # [ ] If this path doesn't exist, create it.
+    # If this path doesn't exist, create it.
+    if not os.path.exists(path):
+        os.makedirs(path)
     filename = "summary.csv"
     zf = PyZipFile(zip_file).extract(filename,path=path)
     target = "{}/{}".format(path,filename)
