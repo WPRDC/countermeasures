@@ -4,11 +4,15 @@ from marshmallow import fields, pre_load, post_load
 sys.path.insert(0, '/Users/drw/WPRDC/etl-dev/wprdc-etl') # A path that we need to import code from
 import pipeline as pl
 from subprocess import call
-import pprint
+from pprint import pprint
 import time
 from datetime import datetime, timedelta
 import dataset
 from zipfile import PyZipFile
+
+import requests
+from lxml import html, etree # Use etree.tostring(element) to dump 
+# the raw XML.
 
 from parameters.local_parameters import ELECTION_RESULTS_SETTINGS_FILE
 
@@ -61,11 +65,16 @@ def classify_election(dt):
     elif datetime(year,10,19) < dt < datetime(year,12,19):
         which = "General"
     else:
+        # If dt is the last modification date of the summary file,
+        # this code is currently not working since the last modification
+        # to the 2017 Primary Election results CSV file 
+        # was 2017-07-27 14:46:00.
+
         which = "Special"
         notify_admins("Special election detected")
     return which
 
-def build_resource_name(today,last_modified):
+def build_resource_name(today,last_modified,election_type=None):
     # Some election dates: May 17, 2017 (Primary)
     # November 8, 2016 (General)
 
@@ -100,7 +109,10 @@ def build_resource_name(today,last_modified):
         raise ValueError("build_resource_name: Falling back from last_modified to today's date, but maybe this is not such a hot idea...")
         date_to_use = today
     year = date_to_use.year
-    which = classify_election(date_to_use)
+    if election_type is None:
+        which = classify_election(date_to_use)
+    else:
+        which = str(election_type)
 
     return "{} {} Election Results".format(year, which)
 
@@ -119,42 +131,75 @@ def retrieve_last_hash(table):
     last = table.find_one(hash_name='Election Results CSV zipped')
     return last
  
-def save_new_hash(table,new_value,r_name):
-    table.insert(dict(hash_name='Election Results CSV zipped', value=new_value, date=datetime.now().strftime("%Y-%m-%d"),inferred_results = r_name))
+def save_new_hash(db,table,new_value,r_name,file_mod_date):
+    table.drop()
+    table = db['election']
+    table.insert(dict(hash_name='Election Results CSV zipped', value=new_value, save_date=datetime.now().strftime("%Y-%m-%d %H:%M"), last_modified = file_mod_date.strftime("%Y-%m-%d %H:%M"), inferred_results = r_name))
     return table
 
 def is_changed(table,zip_file):
-    # First just try checking the modification date of the 
-    # file.
+    # First just try checking the modification date of the file.
     hash_value = compute_hash(zip_file)
     last_hash_entry = retrieve_last_hash(table)
-    print(last_hash_entry)
+
     zf = PyZipFile(zip_file)
-    #last_mod = datetime(*zf.getinfo("summary.csv").date_time)
-    #if last_hash_entry is None:
-    #    return True, None
-    #if last_mod <= datetime.strptime(last_hash_entry['date'], "%Y-%m-%d"): # This compares two different values.
-    #    return False, last_hash_entry
     last_mod = None
+    last_mod = datetime(*zf.getinfo("summary.csv").date_time)
+    if last_hash_entry is None: # No previous hash found
+        return True, last_hash_entry, last_mod
+
+    # Check database of hashes.
+    if hash_value == last_hash_entry['value']:
+        return False, last_hash_entry, last_mod
+
     try:
         last_mod = datetime(*zf.getinfo("summary.csv").date_time)
-        if last_hash_entry is None:
-            return True, None, last_mod
-        if last_mod <= last_hash_entry['date']: # This compares two different values.
-            return False, last_hash_entry, last_mod
+        prev_mod = last_hash_entry['last_modified'] 
+        if prev_mod is not None and prev_mod != '': 
+            previous_modification_date = datetime.strptime(prev_mod, "%Y-%m-%d %H:%M")
+            if last_mod <= previous_modification_date:
+                return False, last_hash_entry, last_mod
     except:
-        # Check database of hashes.
-        if hash_value == last_hash_entry.value:
-            return False, last_hash_entry, last_mod
+        print("Unable to compare either of the last hash entry's dates with the file's last modification date.")
     return True, last_hash_entry, last_mod
 
-def update_hash(table,zip_file,r_name):
+def update_hash(db,table,zip_file,r_name,file_mod_date):
     hash_value = compute_hash(zip_file)
-    table = save_new_hash(table,hash_value,r_name)
+    print("Updating hash table with these values: {}, {}, {}".format(hash_value, r_name, file_mod_date))
+    table = save_new_hash(db,table,hash_value,r_name,file_mod_date)
     return
 
 def main(schema):
-    zip_file = 'summary.zip'
+    # Scrape location of zip file (and designation of the election):
+    #r = requests.get("http://www.alleghenycounty.us/elections/election-results.aspx")
+    #tree = html.fromstring(r.content)
+    #title = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/font/a/@title')[0] # Xpath to find the title for the link
+    ## to the most recent election (e.g., "2017 General Election").
+    #url = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/font/a/@html')[0] 
+    # But this looks like this:
+    # 'http://results.enr.clarityelections.com/PA/Allegheny/68994/Web02/#/'
+    # so it still doesn't get us that other 6-digit number needed for the
+    # full path, leaving us to scrape that too.
+
+    # Download ZIP file
+    #r = requests.get("http://results.enr.clarityelections.com/PA/Allegheny/63905/188108/reports/summary.zip") # 2016 General Election file URL
+    #election_type = "Primary"
+    #r = requests.get("http://results.enr.clarityelections.com/PA/Allegheny/68994/188052/reports/summary.zip") # 2017 Primary Election file URL
+
+    election_type = "General"
+    r = requests.get("http://results.enr.clarityelections.com/PA/Allegheny/71801/189912/reports/summary.zip") # 2017 General Election file URL
+    # For now, this is hard-coded.
+
+    path = "tmp"
+    # If this path doesn't exist, create it.
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    # Save result from requests to zip_file location.
+    zip_file = 'tmp/summary.zip'
+    with open(format(zip_file), 'wb') as f:
+        f.write(r.content)
+
     print("zip_file = {}".format(zip_file))
     today = datetime.now()
 
@@ -166,15 +211,11 @@ def main(schema):
         print("The Election Results summary file seems to be unchanged.")
         return
     else:
-        print("A change in the Election Results summary file was detected.")
-        r_name = build_resource_name(today,last_modified)
+        print("The Election Results summary file does not match a previous file.")
+        r_name = build_resource_name(today,last_modified,election_type)
         print("Inferred name = {}".format(r_name))
 
     # Unzip the file
-    path = "tmp"
-    # If this path doesn't exist, create it.
-    if not os.path.exists(path):
-        os.makedirs(path)
     filename = "summary.csv"
     zf = PyZipFile(zip_file).extract(filename,path=path)
     target = "{}/{}".format(path,filename)
@@ -185,17 +226,12 @@ def main(schema):
     #else:
         #kwargs = {'resource_id': ''}
     #resource_id = '8cd32648-757c-4637-9076-85e144997ca8' # Raw liens
-    #target = '/Users/daw165/data/TaxLiens/July31_2013/raw-liens.csv' # This path is hard-coded.
-
-    # Call function that converts fixed-width file into a CSV file. The function 
-    # returns the target file path.
-
-#    target = '/Users/drw/WPRDC/Tax_Liens/foreclosure_data/raw-seminull-test.csv'
-
 
     server = "production"
-    # Code below stolen from prime_ckan/*/open_a_channel() but really from utility_belt/gadgets
-    #with open(os.path.dirname(os.path.abspath(__file__))+'/ckan_settings.json') as f: # The path of this file needs to be specified.
+    # Code below stolen from prime_ckan/*/open_a_channel() but really 
+    # from utility_belt/gadgets 
+
+    # with open(os.path.dirname(os.path.abspath(__file__))+'/ckan_settings.json') as f: # The path of this file needs to be specified.
     with open(ELECTION_RESULTS_SETTINGS_FILE) as f: 
         settings = json.load(f)
     site = settings['loader'][server]['ckan_root_url']
@@ -223,7 +259,8 @@ def main(schema):
               method='upsert',
               **kwargs).run()
 
-    update_hash(table,zip_file,r_name)
+    
+    update_hash(db,table,zip_file,r_name,last_modified)
     log = open('uploaded.log', 'w+')
     if specify_resource_by_name:
         print("Piped data to {}".format(kwargs['resource_name']))
