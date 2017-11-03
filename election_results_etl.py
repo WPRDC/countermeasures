@@ -68,7 +68,11 @@ def classify_election(dt):
         # If dt is the last modification date of the summary file,
         # this code is currently not working since the last modification
         # to the 2017 Primary Election results CSV file 
-        # was 2017-07-27 14:46:00.
+        # was 2017-07-27 14:46:00. Thus, the last modification timestamp
+        # may not be adequate for inferring the type of election.
+
+        # Presumably a small number of records could be indicative of a 
+        # special election.
 
         which = "Special"
         notify_admins("Special election detected")
@@ -159,13 +163,13 @@ def is_changed(table,zip_file):
             previous_modification_date = datetime.strptime(prev_mod, "%Y-%m-%d %H:%M")
             if last_mod <= previous_modification_date:
                 return False, last_hash_entry, last_mod
+
     except:
-        print("Unable to compare either of the last hash entry's dates with the file's last modification date.")
+        print("Unable to compare the last hash entry's file modification date with the current file's last modification date.")
     return True, last_hash_entry, last_mod
 
 def update_hash(db,table,zip_file,r_name,file_mod_date):
     hash_value = compute_hash(zip_file)
-    print("Updating hash table with these values: {}, {}, {}".format(hash_value, r_name, file_mod_date))
     table = save_new_hash(db,table,hash_value,r_name,file_mod_date)
     return
 
