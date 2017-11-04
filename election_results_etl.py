@@ -1,4 +1,4 @@
-import os, sys, json
+import re, os, sys, json
 from marshmallow import fields, pre_load, post_load
 
 sys.path.insert(0, '/Users/drw/WPRDC/etl-dev/wprdc-etl') # A path that we need to import code from
@@ -13,6 +13,8 @@ from zipfile import PyZipFile
 import requests
 from lxml import html, etree # Use etree.tostring(element) to dump 
 # the raw XML.
+
+from notify import send_to_slack
 
 from parameters.local_parameters import ELECTION_RESULTS_SETTINGS_FILE
 
@@ -29,7 +31,7 @@ class ElectionResultsSchema(pl.BaseSchema):
     num_precinct_rptg = fields.Integer(dump_to="num_precinct_rptg",allow_none=True)
     over_votes = fields.Integer(allow_none=True)
     under_votes = fields.Integer(allow_none=True)
-    # Never let any of the key fields have None values. It's just asking for 
+    # NEVER let any of the key fields have None values. It's just asking for 
     # multiplicity problems on upsert.
 
     # [Note that since this script is taking data from CSV files, there should be no 
@@ -175,9 +177,9 @@ def update_hash(db,table,zip_file,r_name,file_mod_date):
 
 def main(schema):
     # Scrape location of zip file (and designation of the election):
-    #r = requests.get("http://www.alleghenycounty.us/elections/election-results.aspx")
-    #tree = html.fromstring(r.content)
-    #title = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/font/a/@title')[0] # Xpath to find the title for the link
+    r = requests.get("http://www.alleghenycounty.us/elections/election-results.aspx")
+    tree = html.fromstring(r.content)
+    title_kodos = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/font/a/@title')[0] # Xpath to find the title for the link
     ## to the most recent election (e.g., "2017 General Election").
     #url = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/font/a/@html')[0] 
     # But this looks like this:
@@ -216,8 +218,12 @@ def main(schema):
         return
     else:
         print("The Election Results summary file does not match a previous file.")
-        r_name = build_resource_name(today,last_modified,election_type)
-        print("Inferred name = {}".format(r_name))
+        r_name_kang = build_resource_name(today,last_modified,election_type)
+        r_name_kodos = re.sub(" Results"," Election Results",title_kodos)
+        print("Inferred name = {}, while scraped name = {}".format(r_name_kang,r_name_kodos))
+        
+        if r_name_kang != r_name_kodos:
+            send_to_slack("countermeasures has found two conflicting names for the resource: {} and {}. What are you going to do? Throw these votes away?".format(r_name_kodos,r_name_kang))
 
     # Unzip the file
     filename = "summary.csv"
@@ -226,12 +232,12 @@ def main(schema):
     print("target = {}".format(target))
     specify_resource_by_name = True
     if specify_resource_by_name:
-        kwargs = {'resource_name': r_name}
+        kwargs = {'resource_name': r_name_kang}
     #else:
         #kwargs = {'resource_id': ''}
     #resource_id = '8cd32648-757c-4637-9076-85e144997ca8' # Raw liens
 
-    server = "production"
+    server = "your-new-favorite-dataset"
     # Code below stolen from prime_ckan/*/open_a_channel() but really 
     # from utility_belt/gadgets 
 
@@ -264,7 +270,7 @@ def main(schema):
               **kwargs).run()
 
     
-    update_hash(db,table,zip_file,r_name,last_modified)
+    update_hash(db,table,zip_file,r_name_kang,last_modified)
     log = open('uploaded.log', 'w+')
     if specify_resource_by_name:
         print("Piped data to {}".format(kwargs['resource_name']))
