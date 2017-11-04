@@ -1,5 +1,5 @@
 parameters
 tmp
 hashes.db
-summary.zip
 uploaded.log
+notify.py
