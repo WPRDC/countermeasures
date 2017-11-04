@@ -2,4 +2,3 @@ parameters
 tmp
 hashes.db
 uploaded.log
-notify.py
