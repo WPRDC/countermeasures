@@ -175,12 +175,13 @@ def update_hash(db,table,zip_file,r_name,file_mod_date):
     table = save_new_hash(db,table,hash_value,r_name,file_mod_date)
     return
 
-def main(schema):
+def main(schema, **kwparams):
     # Scrape location of zip file (and designation of the election):
     r = requests.get("http://www.alleghenycounty.us/elections/election-results.aspx")
     tree = html.fromstring(r.content)
     title_kodos = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/font/a/@title')[0] # Xpath to find the title for the link
-    ## to the most recent election (e.g., "2017 General Election").
+    ## to the MOST RECENT election (e.g., "2017 General Election").
+
     #url = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/font/a/@html')[0] 
     # But this looks like this:
     # 'http://results.enr.clarityelections.com/PA/Allegheny/68994/Web02/#/'
@@ -237,7 +238,7 @@ def main(schema):
         #kwargs = {'resource_id': ''}
     #resource_id = '8cd32648-757c-4637-9076-85e144997ca8' # Raw liens
 
-    server = "your-new-favorite-dataset"
+    server = kwparams.get('server', "your-new-favorite-dataset")
     # Code below stolen from prime_ckan/*/open_a_channel() but really 
     # from utility_belt/gadgets 
 
@@ -247,7 +248,7 @@ def main(schema):
     site = settings['loader'][server]['ckan_root_url']
     package_id = settings['loader'][server]['package_id']
 
-    print("Preparing to pipe data from {} to resource {} package ID {} on {}".format(target,list(kwargs.values())[0],package_id,site))
+    print("Preparing to pipe data from {} to resource {} (package ID = {}) on {}".format(target,list(kwargs.values())[0],package_id,site))
     time.sleep(1.0)
 
     pipeline = pl.Pipeline('election_results_pipeline',
@@ -291,5 +292,9 @@ fields_to_publish = fields0
 print("fields_to_publish = {}".format(fields_to_publish))
 
 if __name__ == "__main__":
-   # stuff only to run when not called via 'import' here
-    main(schema)
+    # stuff only to run when not called via 'import' here
+    if len(sys.argv) > 1:
+        server = sys.argv[1]
+        main(schema,server=server)
+    else:
+        main(schema)
