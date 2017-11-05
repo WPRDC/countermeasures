@@ -2,3 +2,4 @@ parameters
 tmp
 hashes.db
 uploaded.log
+__pycache__
