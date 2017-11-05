@@ -60,6 +60,12 @@ def notify_admins(msg):
     print(msg)
     pass
 
+def delete_temporary_file(filename):
+    try:
+        os.remove(filename)
+    except OSError:
+        pass
+
 def classify_election(dt):
     year = dt.year
     if datetime(year,2,14) < dt < datetime(year,4,15):
@@ -236,7 +242,6 @@ def main(schema, **kwparams):
         kwargs = {'resource_name': r_name_kang}
     #else:
         #kwargs = {'resource_id': ''}
-    #resource_id = '8cd32648-757c-4637-9076-85e144997ca8' # Raw liens
 
     server = kwparams.get('server', "your-new-favorite-dataset")
     # Code below stolen from prime_ckan/*/open_a_channel() but really 
@@ -280,7 +285,10 @@ def main(schema, **kwparams):
         print("Piped data to {}".format(kwargs['resource_id']))
         log.write("Finished upserting {}\n".format(kwargs['resource_id']))
     log.close()
-    # [ ] Delete temp file after extraction.
+    # Delete temp file after extraction.
+    delete_temporary_file(zip_file)
+    delete_temporary_file(path+'/'+filename)
+
 
 schema = ElectionResultsSchema
 fields0 = schema().serialize_to_ckan_fields()
@@ -295,6 +303,10 @@ if __name__ == "__main__":
     # stuff only to run when not called via 'import' here
     if len(sys.argv) > 1:
         server = sys.argv[1]
+        # When invoking this function from the command line, the 
+        # argument 'production' must be given to push data to 
+        # a public repository. Otherwise, it will default to going
+        # to a test directory.
         main(schema,server=server)
     else:
         main(schema)
