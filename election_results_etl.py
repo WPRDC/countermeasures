@@ -20,6 +20,43 @@ from parameters.local_parameters import ELECTION_RESULTS_SETTINGS_FILE
 
 from ckanapi import RemoteCKAN
 
+# BEGIN functions stolen from utility_belt #
+
+def get_package_parameter(site,package_id,parameter,API_key=None):
+    # Some package parameters you can fetch from the WPRDC with
+    # this function are:
+    # 'geographic_unit', 'owner_org', 'maintainer', 'data_steward_email',
+    # 'relationships_as_object', 'access_level_comment',
+    # 'frequency_publishing', 'maintainer_email', 'num_tags', 'id',
+    # 'metadata_created', 'group', 'metadata_modified', 'author',
+    # 'author_email', 'state', 'version', 'department', 'license_id',
+    # 'type', 'resources', 'num_resources', 'data_steward_name', 'tags',
+    # 'title', 'frequency_data_change', 'private', 'groups',
+    # 'creator_user_id', 'relationships_as_subject', 'data_notes',
+    # 'name', 'isopen', 'url', 'notes', 'license_title',
+    # 'temporal_coverage', 'related_documents', 'license_url',
+    # 'organization', 'revision_id'
+    try:
+        ckan = RemoteCKAN(site, apikey=API_key)
+        metadata = ckan.action.package_show(id=package_id)
+        desired_string = metadata[parameter]
+        #print("The parameter {} for this package is {}".format(parameter,metadata[parameter]))
+    except:
+        raise RuntimeError("Unable to obtain package parameter '{}' for package with ID {}".format(parameter,package_id))
+
+    return desired_string
+
+def find_resource_id(site,package_id,resource_name,API_key=None):
+    resources = get_package_parameter(site,package_id,'resources',API_key)
+    #ckan = RemoteCKAN(site, apikey=API_key)
+    #metadata = ckan.action.package_show(id=package_id)
+    #resources = metadata['resources']
+    for r in resources:
+        if r['name'] == resource_name:
+            return r['id']
+    return None
+
+# END functions stolen from utility_belt #
 
 class ElectionResultsSchema(pl.BaseSchema): 
     line_number = fields.Integer(dump_to="line_number", allow_none=False)
@@ -292,13 +329,22 @@ def main(schema, **kwparams):
     with open(format(xml_file), 'wb') as g:
         g.write(r_xml.content)
 
-    ckan = RemoteCKAN(site, apikey=API_key)
-    ckan.action.resource_create(
-        package_id=package_id,
-        url='dummy-value',  # ignored but required by CKAN<2.6
-        name=r_name_kodos+' by Precinct (zipped XML file)',
-        upload=open(xml_file, 'rb'))
+    xml_name = r_name_kodos+' by Precinct (zipped XML file)'
 
+    ckan = RemoteCKAN(site, apikey=API_key)
+    resource_id = find_resource_id(site,package_id,xml_name,API_key=API_key)
+    if resource_id is None:
+        ckan.action.resource_create(
+            package_id=package_id,
+            url='dummy-value',  # ignored but required by CKAN<2.6
+            name=xml_name,
+            upload=open(xml_file, 'rb'))
+    else:
+        ckan.action.resource_update(
+            package_id=package_id,
+            url='dummy-value',  # ignored but required by CKAN<2.6
+            id = resource_id,
+            upload=open(xml_file, 'rb'))
 
     log = open('uploaded.log', 'w+')
     if specify_resource_by_name:
