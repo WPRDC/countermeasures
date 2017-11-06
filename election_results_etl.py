@@ -18,6 +18,9 @@ from notify import send_to_slack
 
 from parameters.local_parameters import ELECTION_RESULTS_SETTINGS_FILE
 
+from ckanapi import RemoteCKAN
+
+
 class ElectionResultsSchema(pl.BaseSchema): 
     line_number = fields.Integer(dump_to="line_number", allow_none=False)
     contest_name = fields.String(allow_none=False)
@@ -27,8 +30,8 @@ class ElectionResultsSchema(pl.BaseSchema):
     percent_of_votes = fields.Float(allow_none=True)
     registered_voters = fields.Integer(allow_none=True)
     ballots_cast = fields.Integer(allow_none=True)
-    num_precinct_total = fields.Integer(dump_to="num_precinct_total", allow_none=True)
-    num_precinct_rptg = fields.Integer(dump_to="num_precinct_rptg",allow_none=True)
+    num_precinct_total = fields.Integer(dump_to="total_number_of_precincts", allow_none=True)
+    num_precinct_rptg = fields.Integer(dump_to="number_of_precincts_reporting", allow_none=True)
     over_votes = fields.Integer(allow_none=True)
     under_votes = fields.Integer(allow_none=True)
     # NEVER let any of the key fields have None values. It's just asking for 
@@ -200,8 +203,11 @@ def main(schema, **kwparams):
     #r = requests.get("http://results.enr.clarityelections.com/PA/Allegheny/68994/188052/reports/summary.zip") # 2017 Primary Election file URL
 
     election_type = "General"
-    r = requests.get("http://results.enr.clarityelections.com/PA/Allegheny/71801/189912/reports/summary.zip") # 2017 General Election file URL
+    path_for_current_results = "http://results.enr.clarityelections.com/PA/Allegheny/71801/189912/reports/"
+    summary_file_url = path_for_current_results + "summary.zip"
+    r = requests.get(summary_file_url) # 2017 General Election file URL
     # For now, this is hard-coded.
+    xml_file_url = path_for_current_results + "detailxml.zip"
 
     path = "tmp"
     # If this path doesn't exist, create it.
@@ -252,6 +258,7 @@ def main(schema, **kwparams):
         settings = json.load(f)
     site = settings['loader'][server]['ckan_root_url']
     package_id = settings['loader'][server]['package_id']
+    API_key = settings['loader'][server]['ckan_api_key']
 
     print("Preparing to pipe data from {} to resource {} (package ID = {}) on {}".format(target,list(kwargs.values())[0],package_id,site))
     time.sleep(1.0)
@@ -277,6 +284,22 @@ def main(schema, **kwparams):
 
     
     update_hash(db,table,zip_file,r_name_kang,last_modified)
+
+    # Also update the zipped XML file.
+
+    r_xml = requests.get(xml_file_url)
+    xml_file = 'tmp/detailxml.zip'
+    with open(format(xml_file), 'wb') as g:
+        g.write(r_xml.content)
+
+    ckan = RemoteCKAN(site, apikey=API_key)
+    ckan.action.resource_create(
+        package_id=package_id,
+        url='dummy-value',  # ignored but required by CKAN<2.6
+        name=r_name_kodos+' by Precinct (zipped XML file)',
+        upload=open(xml_file, 'rb'))
+
+
     log = open('uploaded.log', 'w+')
     if specify_resource_by_name:
         print("Piped data to {}".format(kwargs['resource_name']))
@@ -285,6 +308,8 @@ def main(schema, **kwparams):
         print("Piped data to {}".format(kwargs['resource_id']))
         log.write("Finished upserting {}\n".format(kwargs['resource_id']))
     log.close()
+
+    
     # Delete temp file after extraction.
     delete_temporary_file(zip_file)
     delete_temporary_file(path+'/'+filename)
@@ -308,5 +333,10 @@ if __name__ == "__main__":
         # a public repository. Otherwise, it will default to going
         # to a test directory.
         main(schema,server=server)
+        # Note that the hash database is currently unaware of which
+        # server a file is saved to, so if it's first saved to 
+        # the test server and you run the ETL script again for the
+        # production server, if the file hasn't changed, the script
+        # will not push the data to the production server.
     else:
         main(schema)
