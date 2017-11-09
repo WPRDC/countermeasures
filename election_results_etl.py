@@ -305,7 +305,11 @@ def main(schema, **kwparams):
     print("zip_file = {}".format(zip_file))
     today = datetime.now()
 
-    db = dataset.connect('sqlite:///{}/hashes.db'.format(dname))
+    # Make name of hash database dependent on the server
+    # as a very clear way of differentiating test and production
+    # datasets.
+    server = kwparams.get('server', "your-new-favorite-dataset")
+    db = dataset.connect('sqlite:///{}/hashes-{}.db'.format(dname,server))
     table = db['election']
 
     changed, last_hash_entry, last_modified = is_changed(table,zip_file)
@@ -332,7 +336,6 @@ def main(schema, **kwparams):
     #else:
         #kwargs = {'resource_id': ''}
 
-    server = kwparams.get('server', "your-new-favorite-dataset")
     # Code below stolen from prime_ckan/*/open_a_channel() but really 
     # from utility_belt/gadgets 
 
