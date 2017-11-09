@@ -238,11 +238,51 @@ def main(schema, **kwparams):
     title_kodos = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/font/a/@title')[0] # Xpath to find the title for the link
     ## to the MOST RECENT election (e.g., "2017 General Election").
 
-    #url = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/font/a/@html')[0] 
+    url = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/font/a')[0].attrib['href']
     # But this looks like this:
-    # 'http://results.enr.clarityelections.com/PA/Allegheny/68994/Web02/#/'
+    #   'http://results.enr.clarityelections.com/PA/Allegheny/71801/Web02/#/'
     # so it still doesn't get us that other 6-digit number needed for the
-    # full path, leaving us to scrape that too.
+    # full path, leaving us to scrape that too, and it turns out that 
+    # such scraping is necessary since the directory where the zipped CSV
+    # files are found changes too.
+
+    path = dname+"/tmp"
+    # If this path doesn't exist, create it.
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    # Worse than that, the page is server-side generated, so one must
+    # use something like Selenium to find out what the download link is.
+    from selenium import webdriver
+    chrome_options = webdriver.ChromeOptions()
+    prefs = {'download.default_directory': path}
+    chrome_options.add_experimental_option('prefs', prefs)
+    chromedriver_path = "/usr/bin/chromedriver"
+    try:
+        driver = webdriver.Chrome(chromedriver_path, chrome_options=chrome_options)
+    except:
+        driver = webdriver.Chrome("/Users/drw/Apps/Internet/chromedriver", chrome_options=chrome_options)
+
+    driver.get(url)
+    # At this point, it's not possible to get the link since
+    # the page is generated and loaded too slowly.
+    # "the webdriver will wait for a page to load by default. It does 
+    # not wait for loading inside frames or for ajax requests. It means 
+    # when you use .get('url'), your browser will wait until the page 
+    # is completely loaded and then go to the next command in the code. 
+    # But when you are posting an ajax request, webdriver does not wait 
+    # and it's your responsibility to wait an appropriate amount of time 
+    # for the page or a part of page to load; so there is a module named 
+    # expected_conditions."
+    delay = 15 # seconds
+    time.sleep(delay)
+    try:
+        #myElem = WebDriverWait(browser, delay).until(EC.presence_of_element_located((By.ID, 'IdOfMyElement')))
+        summary_file_url = driver.find_elements_by_class_name("list-download-link")[0].get_attribute("href")
+        print("The page loaded successfully.")
+    except TimeoutException:
+        print("Loading the page took too long!")
+
 
     # Download ZIP file
     #r = requests.get("http://results.enr.clarityelections.com/PA/Allegheny/63905/188108/reports/summary.zip") # 2016 General Election file URL
@@ -250,16 +290,12 @@ def main(schema, **kwparams):
     #r = requests.get("http://results.enr.clarityelections.com/PA/Allegheny/68994/188052/reports/summary.zip") # 2017 Primary Election file URL
 
     election_type = "General"
-    path_for_current_results = "http://results.enr.clarityelections.com/PA/Allegheny/71801/189912/reports/"
-    summary_file_url = path_for_current_results + "summary.zip"
+    #path_for_current_results = "http://results.enr.clarityelections.com/PA/Allegheny/71801/189912/reports/"
+    #summary_file_url = path_for_current_results + "summary.zip"
     r = requests.get(summary_file_url) # 2017 General Election file URL
     # For now, this is hard-coded.
-    xml_file_url = path_for_current_results + "detailxml.zip"
-
-    path = dname+"/tmp"
-    # If this path doesn't exist, create it.
-    if not os.path.exists(path):
-        os.makedirs(path)
+    #xml_file_url = path_for_current_results + "detailxml.zip"
+    xml_file_url = driver.find_elements_by_class_name("list-download-link")[2].get_attribute("href")
 
     # Save result from requests to zip_file location.
     zip_file = dname+'/tmp/summary.zip'
