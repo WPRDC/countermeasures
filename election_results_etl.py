@@ -257,7 +257,7 @@ def main(schema, **kwparams):
     chrome_options = webdriver.ChromeOptions()
     prefs = {'download.default_directory': path}
     chrome_options.add_experimental_option('prefs', prefs)
-    chromedriver_path = "/usr/bin/chromedriver"
+    chromedriver_path = "/usr/local/bin/chromedriver"
     try:
         driver = webdriver.Chrome(chromedriver_path, chrome_options=chrome_options)
     except:
