@@ -20,6 +20,12 @@ from parameters.local_parameters import ELECTION_RESULTS_SETTINGS_FILE
 
 from ckanapi import RemoteCKAN
 
+# Change path to script's path for cron job 
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+os.chdir(dname)
+#############
+
 # BEGIN functions stolen from utility_belt #
 
 def get_package_parameter(site,package_id,parameter,API_key=None):
@@ -194,6 +200,10 @@ def is_changed(table,zip_file):
     hash_value = compute_hash(zip_file)
     last_hash_entry = retrieve_last_hash(table)
 
+    if last_hash_entry is not None:
+        print("last hash = {}".format(last_hash_entry['value']))
+    print("new hash  = {}".format(hash_value))
+
     zf = PyZipFile(zip_file)
     last_mod = None
     last_mod = datetime(*zf.getinfo("summary.csv").date_time)
@@ -246,20 +256,20 @@ def main(schema, **kwparams):
     # For now, this is hard-coded.
     xml_file_url = path_for_current_results + "detailxml.zip"
 
-    path = "tmp"
+    path = dname+"/tmp"
     # If this path doesn't exist, create it.
     if not os.path.exists(path):
         os.makedirs(path)
 
     # Save result from requests to zip_file location.
-    zip_file = 'tmp/summary.zip'
+    zip_file = dname+'/tmp/summary.zip'
     with open(format(zip_file), 'wb') as f:
         f.write(r.content)
 
     print("zip_file = {}".format(zip_file))
     today = datetime.now()
 
-    db = dataset.connect('sqlite:///hashes.db')
+    db = dataset.connect('sqlite:///{}/hashes.db'.format(dname))
     table = db['election']
 
     changed, last_hash_entry, last_modified = is_changed(table,zip_file)
@@ -325,7 +335,7 @@ def main(schema, **kwparams):
     # Also update the zipped XML file.
 
     r_xml = requests.get(xml_file_url)
-    xml_file = 'tmp/detailxml.zip'
+    xml_file = dname+'/tmp/detailxml.zip'
     with open(format(xml_file), 'wb') as g:
         g.write(r_xml.content)
 
@@ -346,7 +356,7 @@ def main(schema, **kwparams):
             id = resource_id,
             upload=open(xml_file, 'rb'))
 
-    log = open('uploaded.log', 'w+')
+    log = open(dname+'/uploaded.log', 'w+')
     if specify_resource_by_name:
         print("Piped data to {}".format(kwargs['resource_name']))
         log.write("Finished upserting {}\n".format(kwargs['resource_name']))
