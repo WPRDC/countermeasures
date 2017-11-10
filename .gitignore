@@ -1,5 +1,5 @@
 parameters
 tmp
-hashes.db
+hashes-*.db
 uploaded.log
 __pycache__
