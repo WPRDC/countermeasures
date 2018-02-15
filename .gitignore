@@ -3,3 +3,5 @@ tmp
 hashes-*.db
 uploaded.log
 __pycache__
+*.csv
+*.swp
