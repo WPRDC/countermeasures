@@ -308,7 +308,7 @@ def main(schema, **kwparams):
     # Make name of hash database dependent on the server
     # as a very clear way of differentiating test and production
     # datasets.
-    server = kwparams.get('server', "your-new-favorite-dataset")
+    server = kwparams.get('server', "secret-cool-data")
     db = dataset.connect('sqlite:///{}/hashes-{}.db'.format(dname,server))
     table = db['election']
 
