@@ -312,6 +312,14 @@ def main(schema, **kwparams):
     db = dataset.connect('sqlite:///{}/hashes-{}.db'.format(dname,server))
     table = db['election']
 
+    # with open(os.path.dirname(os.path.abspath(__file__))+'/ckan_settings.json') as f: # The path of this file needs to be specified.
+    with open(ELECTION_RESULTS_SETTINGS_FILE) as f: 
+        settings = json.load(f)
+    site = settings['loader'][server]['ckan_root_url']
+    package_id = settings['loader'][server]['package_id']
+    API_key = settings['loader'][server]['ckan_api_key']
+
+
     changed, last_hash_entry, last_modified = is_changed(table,zip_file)
     if not changed:
         print("The Election Results summary file seems to be unchanged.")
@@ -319,11 +327,29 @@ def main(schema, **kwparams):
     else:
         print("The Election Results summary file does not match a previous file.")
         r_name_kang = build_resource_name(today,last_modified,election_type)
-        r_name_kodos = re.sub(" Results"," Election Results",title_kodos)
-        print("Inferred name = {}, while scraped name = {}".format(r_name_kang,r_name_kodos))
+        #r_name_kodos = re.sub(" Results"," Election Results",title_kodos)
+        # Sample names from titles of links:
+        # Special Election for 35th Legislative District
+        # 2017 General Results
+        # Election Results: 2014 Primary
+        # Election Results: 2014 General Election
+        # 2012 Special 40th State Sen Results
         
+        # Since there's so much variation in these names, maybe it's best just
+        # to use them without modifying them and accept that the resource 
+        # names will vary a little. They can always be cleaned up after the election.
+        r_name_kodos = title_kodos
+
+        print("Inferred name = {}, while scraped name = {}".format(r_name_kang,r_name_kodos))
+       
+        r_chosen_name = r_name_kodos # Maybe using ths scraped name is better.
+
         if r_name_kang != r_name_kodos:
-            send_to_slack("countermeasures has found two conflicting names for the resource: {} and {}. What are you going to do? Throw these votes away?".format(r_name_kodos,r_name_kang))
+            resource_id = find_resource_id(site,package_id,r_chosen_name,API_key=API_key)
+            if resource_id is None:
+                send_to_slack("countermeasures has found two conflicting names for the resource: {} and {}. Neither can be found in the dataset. What are you going to do? Throw these votes away?".format(r_name_kodos,r_name_kang))
+                # The first time this notification fired, the Kodos name was "Special Election for 35th Legislative District" and the Kang name was "2018 General Election Results".
+                # The second name was (incorrectly) used for storing the CSV file, while the first name was used for storing the zipped XML file.
 
     # Unzip the file
     filename = "summary.csv"
@@ -332,19 +358,13 @@ def main(schema, **kwparams):
     print("target = {}".format(target))
     specify_resource_by_name = True
     if specify_resource_by_name:
-        kwargs = {'resource_name': r_name_kang}
+        kwargs = {'resource_name': r_chosen_name}
     #else:
         #kwargs = {'resource_id': ''}
 
     # Code below stolen from prime_ckan/*/open_a_channel() but really 
     # from utility_belt/gadgets 
 
-    # with open(os.path.dirname(os.path.abspath(__file__))+'/ckan_settings.json') as f: # The path of this file needs to be specified.
-    with open(ELECTION_RESULTS_SETTINGS_FILE) as f: 
-        settings = json.load(f)
-    site = settings['loader'][server]['ckan_root_url']
-    package_id = settings['loader'][server]['package_id']
-    API_key = settings['loader'][server]['ckan_api_key']
 
     print("Preparing to pipe data from {} to resource {} (package ID = {}) on {}".format(target,list(kwargs.values())[0],package_id,site))
     time.sleep(1.0)
@@ -369,7 +389,7 @@ def main(schema, **kwparams):
               **kwargs).run()
 
     
-    update_hash(db,table,zip_file,r_name_kang,last_modified)
+    update_hash(db,table,zip_file,r_chosen_name,last_modified)
 
     # Also update the zipped XML file.
 
@@ -378,7 +398,7 @@ def main(schema, **kwparams):
     with open(format(xml_file), 'wb') as g:
         g.write(r_xml.content)
 
-    xml_name = r_name_kodos+' by Precinct (zipped XML file)'
+    xml_name = r_chosen_name+' by Precinct (zipped XML file)'
 
     ckan = RemoteCKAN(site, apikey=API_key)
     resource_id = find_resource_id(site,package_id,xml_name,API_key=API_key)
