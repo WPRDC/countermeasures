@@ -18,7 +18,7 @@ def send_to_slack(message):
     slack_data = {'text': message + " " + caboose}
     slack_data['username'] = 'TACHYON'
     #To send this as a direct message instead, us the following line. 
-    #slack_data['channel"] = '@username'
+    slack_data['channel'] = '@david'
     #slack_data['icon_emoji'] = ':coffin:' #':tophat:' # ':satellite_antenna:'
     response = requests.post(
         webhook_url, data=json.dumps(slack_data),
