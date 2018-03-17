@@ -104,7 +104,7 @@ class ElectionResultsSchema(pl.BaseSchema):
 #flag below is True.
 def notify_admins(msg):
     print(msg)
-    pass
+    send_to_slack(msg)
 
 def delete_temporary_file(filename):
     try:
