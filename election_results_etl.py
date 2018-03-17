@@ -189,8 +189,9 @@ def retrieve_last_hash(table):
     last = table.find_one(hash_name='Election Results CSV zipped')
     return last
  
-def save_new_hash(db,table,new_value,r_name,file_mod_date):
-    table.drop()
+def save_new_hash(db,table,new_value,r_name,file_mod_date,drop=False):
+    if drop:
+        table.drop()
     table = db['election']
     table.insert(dict(hash_name='Election Results CSV zipped', value=new_value, save_date=datetime.now().strftime("%Y-%m-%d %H:%M"), last_modified = file_mod_date.strftime("%Y-%m-%d %H:%M"), inferred_results = r_name))
     return table
