@@ -129,7 +129,7 @@ def classify_election(dt):
         # special election.
 
         which = "Special"
-        notify_admins("Special election detected")
+        #notify_admins("Special election detected")
     return which
 
 def build_resource_name(today,last_modified,election_type=None):
@@ -325,7 +325,9 @@ def main(schema, **kwparams):
         print("The Election Results summary file seems to be unchanged.")
         return
     else:
-        print("The Election Results summary file does not match a previous file.")
+        print("The Election Results summary file for {} does not match a previous file.".format(title_kodos))
+        election_type = None # Change this to force a particular election_type to be used, but it's
+        # basically irrelevant since r_name_kang is not being used.
         r_name_kang = build_resource_name(today,last_modified,election_type)
         #r_name_kodos = re.sub(" Results"," Election Results",title_kodos)
         # Sample names from titles of links:
@@ -342,7 +344,7 @@ def main(schema, **kwparams):
 
         print("Inferred name = {}, while scraped name = {}".format(r_name_kang,r_name_kodos))
        
-        r_chosen_name = r_name_kodos # Maybe using ths scraped name is better.
+        r_chosen_name = r_name_kodos # Using the scraped name seems better.
 
         if r_name_kang != r_name_kodos:
             resource_id = find_resource_id(site,package_id,r_chosen_name,API_key=API_key)
