@@ -189,6 +189,10 @@ def retrieve_last_hash(table):
     last = table.find_one(hash_name='Election Results CSV zipped')
     return last
  
+def retrieve_hash_by_name(table,r_name):
+    last = table.find_one(hash_name='Election Results CSV zipped',inferred_results=r_name)
+    return last
+
 def save_new_hash(db,table,new_value,r_name,file_mod_date,drop=False):
     if drop:
         table.drop()
@@ -196,13 +200,16 @@ def save_new_hash(db,table,new_value,r_name,file_mod_date,drop=False):
     table.insert(dict(hash_name='Election Results CSV zipped', value=new_value, save_date=datetime.now().strftime("%Y-%m-%d %H:%M"), last_modified = file_mod_date.strftime("%Y-%m-%d %H:%M"), inferred_results = r_name))
     return table
 
-def is_changed(table,zip_file):
+def is_changed(table,zip_file,r_name):
     # First just try checking the modification date of the file.
     hash_value = compute_hash(zip_file)
-    last_hash_entry = retrieve_last_hash(table)
+    last_hash_entry = retrieve_hash_by_name(table,r_name)
 
     if last_hash_entry is not None:
         print("last hash = {}".format(last_hash_entry['value']))
+    else: 
+        notify_admins("A new election has been detected: {}".format(r_name))
+
     print("new hash  = {}".format(hash_value))
 
     zf = PyZipFile(zip_file)
@@ -321,9 +328,9 @@ def main(schema, **kwparams):
     API_key = settings['loader'][server]['ckan_api_key']
 
 
-    changed, last_hash_entry, last_modified = is_changed(table,zip_file)
+    changed, last_hash_entry, last_modified = is_changed(table,zip_file,title_kodos)
     if not changed:
-        print("The Election Results summary file seems to be unchanged.")
+        print("The Election Results summary file for {} seems to be unchanged.".format(title_kodos))
         return
     else:
         print("The Election Results summary file for {} does not match a previous file.".format(title_kodos))
