@@ -441,17 +441,30 @@ print("fields_to_publish = {}".format(fields_to_publish))
 
 if __name__ == "__main__":
     # stuff only to run when not called via 'import' here
-    if len(sys.argv) > 1:
-        server = sys.argv[1]
-        # When invoking this function from the command line, the 
-        # argument 'production' must be given to push data to 
-        # a public repository. Otherwise, it will default to going
-        # to a test directory.
-        main(schema,server=server)
-        # Note that the hash database is currently unaware of which
-        # server a file is saved to, so if it's first saved to 
-        # the test server and you run the ETL script again for the
-        # production server, if the file hasn't changed, the script
-        # will not push the data to the production server.
-    else:
-        main(schema)
+    try:
+        if len(sys.argv) > 1:
+            server = sys.argv[1]
+            # When invoking this function from the command line, the
+            # argument 'production' must be given to push data to
+            # a public repository. Otherwise, it will default to going
+            # to a test directory.
+            main(schema,server=server)
+            # Note that the hash database is currently unaware of which
+            # server a file is saved to, so if it's first saved to
+            # the test server and you run the ETL script again for the
+            # production server, if the file hasn't changed, the script
+            # will not push the data to the production server.
+        else:
+            main(schema)
+    except:
+        e = sys.exc_info()[0]
+        print("Error: {} : ".format(e))
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+        traceback_msg = ''.join('!! ' + line for line in lines)
+        print(traceback_msg)  # Log it or whatever here
+        msg = "countermeasures ran into an error: {}.\nHere's the traceback:\n{}".format(e,traceback_msg)
+        mute_alerts = kwargs.get('mute_alerts',False)
+        if not mute_alerts:
+            send_to_slack(msg,username='countermeasures',channel='@david',icon=':koolaid:')
+
