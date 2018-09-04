@@ -104,7 +104,7 @@ class ElectionResultsSchema(pl.BaseSchema):
 #flag below is True.
 def notify_admins(msg):
     print(msg)
-    pass
+    send_to_slack(msg)
 
 def delete_temporary_file(filename):
     try:
@@ -129,7 +129,7 @@ def classify_election(dt):
         # special election.
 
         which = "Special"
-        notify_admins("Special election detected")
+        #notify_admins("Special election detected")
     return which
 
 def build_resource_name(today,last_modified,election_type=None):
@@ -189,19 +189,27 @@ def retrieve_last_hash(table):
     last = table.find_one(hash_name='Election Results CSV zipped')
     return last
  
-def save_new_hash(db,table,new_value,r_name,file_mod_date):
-    table.drop()
+def retrieve_hash_by_name(table,r_name):
+    last = table.find_one(hash_name='Election Results CSV zipped',inferred_results=r_name)
+    return last
+
+def save_new_hash(db,table,new_value,r_name,file_mod_date,drop=False):
+    if drop:
+        table.drop()
     table = db['election']
     table.insert(dict(hash_name='Election Results CSV zipped', value=new_value, save_date=datetime.now().strftime("%Y-%m-%d %H:%M"), last_modified = file_mod_date.strftime("%Y-%m-%d %H:%M"), inferred_results = r_name))
     return table
 
-def is_changed(table,zip_file):
+def is_changed(table,zip_file,r_name):
     # First just try checking the modification date of the file.
     hash_value = compute_hash(zip_file)
-    last_hash_entry = retrieve_last_hash(table)
+    last_hash_entry = retrieve_hash_by_name(table,r_name)
 
     if last_hash_entry is not None:
         print("last hash = {}".format(last_hash_entry['value']))
+    else: 
+        notify_admins("A new election has been detected: {}".format(r_name))
+
     print("new hash  = {}".format(hash_value))
 
     zf = PyZipFile(zip_file)
@@ -320,12 +328,14 @@ def main(schema, **kwparams):
     API_key = settings['loader'][server]['ckan_api_key']
 
 
-    changed, last_hash_entry, last_modified = is_changed(table,zip_file)
+    changed, last_hash_entry, last_modified = is_changed(table,zip_file,title_kodos)
     if not changed:
-        print("The Election Results summary file seems to be unchanged.")
+        print("The Election Results summary file for {} seems to be unchanged.".format(title_kodos))
         return
     else:
-        print("The Election Results summary file does not match a previous file.")
+        print("The Election Results summary file for {} does not match a previous file.".format(title_kodos))
+        election_type = None # Change this to force a particular election_type to be used, but it's
+        # basically irrelevant since r_name_kang is not being used.
         r_name_kang = build_resource_name(today,last_modified,election_type)
         #r_name_kodos = re.sub(" Results"," Election Results",title_kodos)
         # Sample names from titles of links:
@@ -342,7 +352,7 @@ def main(schema, **kwparams):
 
         print("Inferred name = {}, while scraped name = {}".format(r_name_kang,r_name_kodos))
        
-        r_chosen_name = r_name_kodos # Maybe using ths scraped name is better.
+        r_chosen_name = r_name_kodos # Using the scraped name seems better.
 
         if r_name_kang != r_name_kodos:
             resource_id = find_resource_id(site,package_id,r_chosen_name,API_key=API_key)
