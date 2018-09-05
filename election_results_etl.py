@@ -1,4 +1,4 @@
-import re, os, sys, json
+import re, os, sys, json, traceback
 from marshmallow import fields, pre_load, post_load
 
 sys.path.insert(0, '/Users/drw/WPRDC/etl-dev/wprdc-etl') # A path that we need to import code from
@@ -474,7 +474,7 @@ if __name__ == "__main__":
         traceback_msg = ''.join('!! ' + line for line in lines)
         print(traceback_msg)  # Log it or whatever here
         msg = "countermeasures ran into an error: {}.\nHere's the traceback:\n{}".format(e,traceback_msg)
-        mute_alerts = kwargs.get('mute_alerts',False)
+        mute_alerts = False #kwargs.get('mute_alerts',False)
         if not mute_alerts:
             send_to_slack(msg,username='countermeasures',channel='@david',icon=':koolaid:')
 
