@@ -303,7 +303,21 @@ def main(schema, **kwparams):
     r = requests.get(summary_file_url) # 2017 General Election file URL
     # For now, this is hard-coded.
     #xml_file_url = path_for_current_results + "detailxml.zip"
-    xml_file_url = driver.find_elements_by_class_name("list-download-link")[2].get_attribute("href")
+    xml_index = 3
+    xml_file_url = driver.find_elements_by_class_name("list-download-link")[xml_index].get_attribute("href")
+    found = True
+    if re.search("xml",xml_file_url) is None:
+        xml_index = 1
+        found = False
+        list_download_links = driver.find_elements_by_class_name("list-download-link")
+        while xml_index < len(list_download_links) and not found:
+            xml_file_url = driver.find_elements_by_class_name("list-download-link")[xml_index].get_attribute("href")
+            found = re.search("xml",xml_file_url) is not None
+
+    print("xml_file_url = {}".format(xml_file_url))
+    if not found:
+        notify_admins("Scraping Failure: Unable to find an XML file. Countermeasures terminated.")
+        raise ValueError("This ETL job is broken on account of scraping failure.")
 
     # Save result from requests to zip_file location.
     zip_file = dname+'/tmp/summary.zip'
