@@ -243,10 +243,10 @@ def main(schema, **kwparams):
     # Scrape location of zip file (and designation of the election):
     r = requests.get("http://www.alleghenycounty.us/elections/election-results.aspx")
     tree = html.fromstring(r.content)
-    title_kodos = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/font/a/@title')[0] # Xpath to find the title for the link
+    title_kodos = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/a/@title')[0] # Xpath to find the title for the link
     ## to the MOST RECENT election (e.g., "2017 General Election").
 
-    url = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/font/a')[0].attrib['href']
+    url = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/a')[0].attrib['href']
     # But this looks like this:
     #   'http://results.enr.clarityelections.com/PA/Allegheny/71801/Web02/#/'
     # so it still doesn't get us that other 6-digit number needed for the
