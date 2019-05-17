@@ -371,7 +371,7 @@ def main(schema, **kwparams):
         if r_name_kang != r_name_kodos:
             resource_id = find_resource_id(site,package_id,r_chosen_name,API_key=API_key)
             if resource_id is None:
-                send_to_slack("countermeasures has found two conflicting names for the resource: {} and {}. Neither can be found in the dataset. What are you going to do? Throw these votes away?".format(r_name_kodos,r_name_kang),username='countermeasures',channel='@david',icon=':satellite_antenna:')
+                send_to_slack("countermeasures has found two conflicting names for the resource: {} and {}. Neither can be found in the dataset. {} is being used as the default.\nThis is your reminder to move the new resources to the top of the list.".format(r_name_kodos,r_name_kang,r_name_kodos),username='countermeasures',channel='@david',icon=':satellite_antenna:')
                 # The first time this notification fired, the Kodos name was "Special Election for 35th Legislative District" and the Kang name was "2018 General Election Results".
                 # The second name was (incorrectly) used for storing the CSV file, while the first name was used for storing the zipped XML file.
 
