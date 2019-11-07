@@ -239,6 +239,18 @@ def update_hash(db,table,zip_file,r_name,file_mod_date):
     table = save_new_hash(db,table,hash_value,r_name,file_mod_date)
     return
 
+def fetch_download_entities(driver, download_class):
+    try:
+        #myElem = WebDriverWait(browser, delay).until(EC.presence_of_element_located((By.ID, 'IdOfMyElement')))
+        #summary_file_url = driver.find_elements_by_class_name("list-download-link")[0].get_attribute("href") # This used
+        # to work, but Scytl changed the class name. Ah, the perils of screen scraping!
+        download_entities = driver.find_elements_by_class_name(download_class)
+        print("The page loaded successfully.")
+    except TimeoutException:
+        print("Loading the page took too long!")
+        driver.quit()
+    return download_entities
+
 def main(schema, **kwparams):
     # Scrape location of zip file (and designation of the election):
     r = requests.get("http://www.alleghenycounty.us/elections/election-results.aspx")
@@ -290,14 +302,12 @@ def main(schema, **kwparams):
     time.sleep(delay)
 
     download_class = "pl-2"
-    try:
-        #myElem = WebDriverWait(browser, delay).until(EC.presence_of_element_located((By.ID, 'IdOfMyElement')))
-        #summary_file_url = driver.find_elements_by_class_name("list-download-link")[0].get_attribute("href") # This used
-        # to work, but Scytl changed the class name. Ah, the perils of screen scraping!
-        download_entities = driver.find_elements_by_class_name(download_class)
-        print("The page loaded successfully.")
-    except TimeoutException:
-        print("Loading the page took too long!")
+    download_entities = fetch_download_entities(driver, download_class)
+    if len(download_entities) == 0:
+        # Fall back to older download_class (2019 Primary election and earlier
+        # [yes, the HTML can change from election to election]).
+        download_class = "list-download-link"
+        download_entities = fetch_download_entities(driver, download_class)
 
     if len(download_entities) == 0:
         send_to_slack("countermeasures can no longer find the part of the DOM that contains the download links.",username='countermeasures',channel='@david',icon=':satellite_antenna:')
