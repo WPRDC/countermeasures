@@ -299,6 +299,10 @@ def main(schema, **kwparams):
     except TimeoutException:
         print("Loading the page took too long!")
 
+    if len(download_entities) == 0:
+        send_to_slack("countermeasures can no longer find the part of the DOM that contains the download links.",username='countermeasures',channel='@david',icon=':satellite_antenna:')
+        raise RuntimeError("Screen-scraping error. Nothing found in class {}.".format(download_class))
+
     summary_file_url = download_entities[0].get_attribute("href")
 
     # Download ZIP file
