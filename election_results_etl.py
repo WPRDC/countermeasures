@@ -327,6 +327,7 @@ def main(schema, **kwparams):
         while xml_index < len(download_entities) and not found:
             xml_file_url = download_entities[xml_index].get_attribute("href")
             found = re.search("xml",xml_file_url) is not None
+            xml_index += 1
 
     print("xml_file_url = {}".format(xml_file_url))
     if not found:
