@@ -288,13 +288,18 @@ def main(schema, **kwparams):
     # expected_conditions."
     delay = 15 # seconds
     time.sleep(delay)
+
+    download_class = "pl-2"
     try:
         #myElem = WebDriverWait(browser, delay).until(EC.presence_of_element_located((By.ID, 'IdOfMyElement')))
-        summary_file_url = driver.find_elements_by_class_name("list-download-link")[0].get_attribute("href")
+        #summary_file_url = driver.find_elements_by_class_name("list-download-link")[0].get_attribute("href") # This used
+        # to work, but Scytl changed the class name. Ah, the perils of screen scraping!
+        download_entities = driver.find_elements_by_class_name(download_class)
         print("The page loaded successfully.")
     except TimeoutException:
         print("Loading the page took too long!")
 
+    summary_file_url = download_entities[0].get_attribute("href")
 
     # Download ZIP file
     #r = requests.get("http://results.enr.clarityelections.com/PA/Allegheny/63905/188108/reports/summary.zip") # 2016 General Election file URL
@@ -307,15 +312,16 @@ def main(schema, **kwparams):
     r = requests.get(summary_file_url) # 2017 General Election file URL
     # For now, this is hard-coded.
     #xml_file_url = path_for_current_results + "detailxml.zip"
-    xml_index = 3
-    xml_file_url = driver.find_elements_by_class_name("list-download-link")[xml_index].get_attribute("href")
+    xml_index = 2 # Previously this was 3
+    #xml_file_url = driver.find_elements_by_class_name(download_class)[xml_index].get_attribute("href")
+    xml_file_url = download_entities[xml_index].get_attribute("href")
     found = True
     if re.search("xml",xml_file_url) is None:
         xml_index = 1
         found = False
-        list_download_links = driver.find_elements_by_class_name("list-download-link")
-        while xml_index < len(list_download_links) and not found:
-            xml_file_url = driver.find_elements_by_class_name("list-download-link")[xml_index].get_attribute("href")
+        #list_download_links = driver.find_elements_by_class_name(download_class)
+        while xml_index < len(download_entities) and not found:
+            xml_file_url = download_entities[xml_index].get_attribute("href")
             found = re.search("xml",xml_file_url) is not None
 
     print("xml_file_url = {}".format(xml_file_url))
