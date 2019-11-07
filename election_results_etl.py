@@ -262,6 +262,7 @@ def main(schema, **kwparams):
     # Worse than that, the page is server-side generated, so one must
     # use something like Selenium to find out what the download link is.
     from selenium import webdriver
+    from selenium.common.exceptions import TimeoutException
     chrome_options = webdriver.ChromeOptions()
     prefs = {'download.default_directory': path}
     chrome_options.add_experimental_option('prefs', prefs)
