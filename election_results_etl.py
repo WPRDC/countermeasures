@@ -243,7 +243,10 @@ def main(schema, **kwparams):
     # Scrape location of zip file (and designation of the election):
     r = requests.get("http://www.alleghenycounty.us/elections/election-results.aspx")
     tree = html.fromstring(r.content)
-    title_kodos = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/a/@title')[0] # Xpath to find the title for the link
+    #title_kodos = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/a/@title')[0] # Xpath to find the title for the link
+    # As the title is human-generated, it can differ from the actual text shown on the web page.
+    # In one instance, the title was '2019 Primary', while the link text was '2019 General'.
+    title_kodos = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/a/text()')[0] # Xpath to find the text for the link
     ## to the MOST RECENT election (e.g., "2017 General Election").
 
     url = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/a')[0].attrib['href']
