@@ -312,6 +312,7 @@ def main(schema, **kwparams):
 
     if len(download_entities) == 0:
         send_to_slack("countermeasures can no longer find the part of the DOM that contains the download links.",username='countermeasures',channel='@david',icon=':satellite_antenna:')
+        driver.quit()
         raise RuntimeError("Screen-scraping error. Nothing found in class {}.".format(download_class))
 
     summary_file_url = download_entities[0].get_attribute("href")
@@ -339,6 +340,8 @@ def main(schema, **kwparams):
             xml_file_url = download_entities[xml_index].get_attribute("href")
             found = re.search("xml",xml_file_url) is not None
             xml_index += 1
+
+    driver.quit()
 
     print("xml_file_url = {}".format(xml_file_url))
     if not found:
