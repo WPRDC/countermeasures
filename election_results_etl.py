@@ -284,9 +284,13 @@ def main(schema, **kwparams):
     chrome_options.add_experimental_option('prefs', prefs)
     chromedriver_path = "/usr/local/bin/chromedriver"
     try:
+        chrome_options.add_argument("--headless") # Enable headless mode to allow ETL job to
+        chrome_options.add_argument("--window-size=1920x1080") # run when the screen is locked.
         driver = webdriver.Chrome(chromedriver_path, chrome_options=chrome_options)
     except:
         driver = webdriver.Chrome("/Users/drw/Apps/Internet/chromedriver", chrome_options=chrome_options)
+        # This is just a different location to check for chromedriver. The path
+        # could be moved to a local preferences file.
 
     driver.get(url)
     # At this point, it's not possible to get the link since
