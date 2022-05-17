@@ -282,83 +282,19 @@ def main(schema, **kwparams):
     req = requests.post(phantom_url, data=json.dumps(data))
     tree = html.fromstring(req.content)
 
-#    from selenium import webdriver
-#    from selenium.common.exceptions import TimeoutException
-#    chrome_options = webdriver.ChromeOptions()
-#    prefs = {'download.default_directory': path}
-#    chrome_options.add_experimental_option('prefs', prefs)
-#    chromedriver_path = "/usr/local/bin/chromedriver"
-#    try:
-#        chrome_options.add_argument("--headless") # Enable headless mode to allow ETL job to
-#        chrome_options.add_argument("--window-size=1920x1080") # run when the screen is locked.
-#        driver = webdriver.Chrome(chromedriver_path, chrome_options=chrome_options)
-#    except:
-#        driver = webdriver.Chrome("/Users/drw/Apps/Internet/chromedriver", chrome_options=chrome_options)
-#        # This is just a different location to check for chromedriver. The path
-#        # could be moved to a local preferences file.
-#
-#    driver.get(url)
-#    # At this point, it's not possible to get the link since
-#    # the page is generated and loaded too slowly.
-#    # "the webdriver will wait for a page to load by default. It does 
-#    # not wait for loading inside frames or for ajax requests. It means 
-#    # when you use .get('url'), your browser will wait until the page 
-#    # is completely loaded and then go to the next command in the code. 
-#    # But when you are posting an ajax request, webdriver does not wait 
-#    # and it's your responsibility to wait an appropriate amount of time 
-#    # for the page or a part of page to load; so there is a module named 
-#    # expected_conditions."
-#    delay = 15 # seconds
-#    time.sleep(delay)
-#
-#    download_class = "pl-2"
-#    download_entities = fetch_download_entities(driver, download_class)
-#
-#
-#    if len(download_entities) == 0:
-#        # Fall back to older download_class (2019 Primary election and earlier
-#        # [yes, the HTML can change from election to election]).
-#        download_class = "list-download-link"
-#        download_entities = fetch_download_entities(driver, download_class)
-#
-#    if len(download_entities) == 0:
-#        send_to_slack("countermeasures can no longer find the part of the DOM that contains the download links.",username='countermeasures',channel='@david',icon=':satellite_antenna:')
-#        driver.quit()
-#        raise RuntimeError("Screen-scraping error. Nothing found in class {}.".format(download_class))
-#
-#    summary_file_url = download_entities[0].get_attribute("href")
-
     summary_file_url = tree.xpath("//a[starts-with(@aria-label, 'Download Summary CSV')]")[0].attrib['href'] # 'https://results.enr.clarityelections.com//PA/Allegheny/112982/289202/reports/summary.zip'
 
     # Download ZIP file
-    #r = requests.get("http://results.enr.clarityelections.com/PA/Allegheny/63905/188108/reports/summary.zip") # 2016 General Election file URL
     #election_type = "Primary"
     #r = requests.get("http://results.enr.clarityelections.com/PA/Allegheny/68994/188052/reports/summary.zip") # 2017 Primary Election file URL
 
     election_type = "General"
-    #path_for_current_results = "http://results.enr.clarityelections.com/PA/Allegheny/71801/189912/reports/"
-    #summary_file_url = path_for_current_results + "summary.zip"
     r = requests.get(summary_file_url) # 2017 General Election file URL
-    # For now, this is hard-coded.
-    #xml_file_url = path_for_current_results + "detailxml.zip"
-#    xml_index = 2 # Previously this was 3
-#    #xml_file_url = driver.find_elements_by_class_name(download_class)[xml_index].get_attribute("href")
-#    xml_file_url = download_entities[xml_index].get_attribute("href")
-
     xml_file_url = tree.xpath("//a[starts-with(@aria-label, 'Download Detail XML')]")[0].attrib['href'] # 'https://results.enr.clarityelections.com//PA/Allegheny/112982/289202/reports/detailxml.zip'
 
     found = True
     if re.search("xml", xml_file_url) is None:
-#        xml_index = 1
         found = False
-
-        #list_download_links = driver.find_elements_by_class_name(download_class)
-#        while xml_index < len(download_entities) and not found:
-#            xml_file_url = download_entities[xml_index].get_attribute("href")
-#            found = re.search("xml", xml_file_url) is not None
-#            xml_index += 1
-
-#    driver.quit()
 
     print("xml_file_url = {}".format(xml_file_url))
     if not found:
