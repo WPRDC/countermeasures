@@ -259,10 +259,10 @@ def main(schema, **kwparams):
     # As the title is human-generated, it can differ from the actual text shown on the web page.
     # In one instance, the title was '2019 Primary', while the link text was '2019 General'.
     election_index = 1 # Manually increment this to re-pull older elections
-    title_kodos = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[{}]/td[2]/a/text()'.format(election_index))[0] # Xpath to find the text for the link
+    title_kodos = tree.xpath('//table/tbody/tr[{}]/td[2]/a/text()'.format(election_index))[0] # Xpath to find the text for the link
     ## to the MOST RECENT election (e.g., "2017 General Election").
 
-    url = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[{}]/td[2]/a'.format(election_index))[0].attrib['href']
+    url = tree.xpath('//table/tbody/tr[{}]/td[2]/a'.format(election_index))[0].attrib['href']
     # But this looks like this:
     #   'http://results.enr.clarityelections.com/PA/Allegheny/71801/Web02/#/'
     # so it still doesn't get us that other 6-digit number needed for the
