@@ -238,18 +238,6 @@ def update_hash(db, table, zip_file, r_name, file_mod_date):
     table = save_new_hash(db, table, hash_value, r_name, file_mod_date)
     return
 
-def fetch_download_entities(driver, download_class):
-    try:
-        #myElem = WebDriverWait(browser, delay).until(EC.presence_of_element_located((By.ID, 'IdOfMyElement')))
-        #summary_file_url = driver.find_elements_by_class_name("list-download-link")[0].get_attribute("href") # This used
-        # to work, but Scytl changed the class name. Ah, the perils of screen scraping!
-        download_entities = driver.find_elements_by_class_name(download_class)
-        print("The page loaded successfully.")
-    except TimeoutException:
-        print("Loading the page took too long!")
-        driver.quit()
-    return download_entities
-
 def main(schema, **kwparams):
     # Scrape location of zip file (and designation of the election):
     r = requests.get("http://www.alleghenycounty.us/elections/election-results.aspx")
