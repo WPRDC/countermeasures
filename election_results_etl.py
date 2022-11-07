@@ -438,7 +438,7 @@ def main(schema, **kwparams):
                               settings_from_file=True,
                               start_from_chunk=0
                               ) \
-        .connect(pl.FileConnector, target, encoding='utf-8') \
+        .connect(pl.FileConnector, target, encoding='latin-1') \
         .extract(pl.CSVExtractor, firstline_headers=True) \
         .schema(schema) \
         .load(pl.CKANDatastoreLoader, server,
