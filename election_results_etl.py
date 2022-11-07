@@ -332,7 +332,9 @@ def main(schema, **kwparams):
     election_type = "General"
     #path_for_current_results = "http://results.enr.clarityelections.com/PA/Allegheny/71801/189912/reports/"
     #summary_file_url = path_for_current_results + "summary.zip"
-    r = requests.get(summary_file_url) # 2017 General Election file URL
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.84 Safari/537.36'}
+    #headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2227.1 Safari/537.36'}
+    r = requests.get(summary_file_url, headers=headers) # 2017 General Election file URL
     # For now, this is hard-coded.
     #xml_file_url = path_for_current_results + "detailxml.zip"
     xml_index = 2 # Previously this was 3
@@ -453,7 +455,7 @@ def main(schema, **kwparams):
 
     # Also update the zipped XML file.
 
-    r_xml = requests.get(xml_file_url)
+    r_xml = requests.get(xml_file_url, headers=headers)
     xml_file = dname+'/tmp/detailxml.zip'
     with open(format(xml_file), 'wb') as g:
         g.write(r_xml.content)
