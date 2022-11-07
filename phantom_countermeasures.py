@@ -17,7 +17,7 @@ from lxml import html, etree # Use etree.tostring(element) to dump
 from notify import send_to_slack
 
 from parameters.local_parameters import ELECTION_RESULTS_SETTINGS_FILE, PHANTOMJSCLOUD_API_KEY
-from ckanapi import RemoteCKAN
+import ckanapi
 
 # Change path to script's path for cron job 
 abspath = os.path.abspath(__file__)
@@ -42,7 +42,7 @@ def get_package_parameter(site,package_id,parameter,API_key=None):
     # 'temporal_coverage', 'related_documents', 'license_url',
     # 'organization', 'revision_id'
     try:
-        ckan = RemoteCKAN(site, apikey=API_key)
+        ckan = ckanapi.RemoteCKAN(site, apikey=API_key)
         metadata = ckan.action.package_show(id=package_id)
         desired_string = metadata[parameter]
         #print("The parameter {} for this package is {}".format(parameter,metadata[parameter]))
@@ -53,7 +53,7 @@ def get_package_parameter(site,package_id,parameter,API_key=None):
 
 def find_resource_id(site,package_id,resource_name,API_key=None):
     resources = get_package_parameter(site,package_id,'resources',API_key)
-    #ckan = RemoteCKAN(site, apikey=API_key)
+    #ckan = ckanapi.RemoteCKAN(site, apikey=API_key)
     #metadata = ckan.action.package_show(id=package_id)
     #resources = metadata['resources']
     for r in resources:
@@ -394,7 +394,7 @@ def main(schema, **kwparams):
 
     xml_name = r_chosen_name+' by Precinct (zipped XML file)'
 
-    ckan = RemoteCKAN(site, apikey=API_key)
+    ckan = ckanapi.RemoteCKAN(site, apikey=API_key)
     resource_id = find_resource_id(site, package_id, xml_name, API_key=API_key)
     if resource_id is None:
         ckan.action.resource_create(
