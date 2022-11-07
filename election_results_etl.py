@@ -287,6 +287,8 @@ def main(schema, **kwparams):
     try:
         chrome_options.add_argument("--headless") # Enable headless mode to allow ETL job to
         chrome_options.add_argument("--window-size=1920x1080") # run when the screen is locked.
+        chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.84 Safari/537.36") # Add
+        # user agent to avoid 403 error that started happening in headless mode in late 2022.
         driver = webdriver.Chrome(chromedriver_path, chrome_options=chrome_options)
     except:
         driver = webdriver.Chrome("/Users/drw/Apps/Internet/chromedriver", chrome_options=chrome_options)
