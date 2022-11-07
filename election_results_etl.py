@@ -253,7 +253,8 @@ def fetch_download_entities(driver, download_class):
 
 def main(schema, **kwparams):
     # Scrape location of zip file (and designation of the election):
-    r = requests.get("http://www.alleghenycounty.us/elections/election-results.aspx")
+    r = requests.get("http://www.alleghenycounty.us/elections/election-results.aspx", verify=False) # Add verify=False to work around
+    # some certificate error on the County's web site.
     tree = html.fromstring(r.content)
     #title_kodos = tree.xpath('//div[@class="custom-form-table"]/table/tbody/tr[1]/td[2]/a/@title')[0] # Xpath to find the title for the link
     # As the title is human-generated, it can differ from the actual text shown on the web page.
